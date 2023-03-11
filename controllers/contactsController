@@ -1,12 +1,11 @@
-const { nanoid } = require("nanoid");
-
 const {
   listContacts,
   getContactById,
   addContact,
   removeContact,
   updateContact,
-} = require("../models/contacts");
+  updateStatusContact,
+} = require("../services/contactServices");
 
 const getContacts = async (_, res) => {
   const listOfContacts = await listContacts();
@@ -37,8 +36,10 @@ const addNewContact = async (req, res, next) => {
       status: "400",
       message: "missing some of required fields",
     });
-  const newContactId = nanoid().toString();
-  const newContact = { id: newContactId, ...req.body };
+  const newContact = { ...req.body };
+  if (!newContact.favorite) {
+    newContact.favorite = false;
+  }
 
   await addContact(newContact);
   res.status(201).json({
@@ -77,7 +78,31 @@ const editContact = async (req, res, next) => {
     });
   }
 
-  const updatedContact = await updateContact(contactById.id, req.body);
+  await updateContact(contactById.id, req.body);
+  const updatedContact = await getContactById(req.params.contactId);
+  res.status(200).json({
+    status: "200",
+    updatedContact,
+  });
+};
+
+const updateFavorite = async (req, res, next) => {
+  if (!req.body && !req.body.favorite)
+    return res.status(400).json({
+      status: "400",
+      message: "missing field favorite",
+    });
+
+  const contactById = await getContactById(req.params.contactId);
+  if (!contactById) {
+    return res.status(404).json({
+      status: "404",
+      message: "Not found",
+    });
+  }
+
+  await updateStatusContact(contactById.id, req.body);
+  const updatedContact = await getContactById(req.params.contactId);
   res.status(200).json({
     status: "200",
     updatedContact,
@@ -90,4 +115,5 @@ module.exports = {
   addNewContact,
   eraseContact,
   editContact,
+  updateFavorite,
 };
