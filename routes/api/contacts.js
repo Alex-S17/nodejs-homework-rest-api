@@ -5,8 +5,6 @@ const {
   updateFavoriteValidation,
 } = require("../../middlewares/validationContacts");
 
-const router = express.Router();
-
 const {
   getContacts,
   getById,
@@ -15,6 +13,8 @@ const {
   editContact,
   updateFavorite,
 } = require("../../controllers/contactsController");
+
+const router = express.Router();
 
 router.get("/", getContacts);
 
