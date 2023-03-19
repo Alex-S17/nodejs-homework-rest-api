@@ -1,56 +1,74 @@
 const { Contact } = require("../models/contactModel");
 
-const listContacts = async () => {
+const listContacts = async (_id, skip, limit, favorite) => {
   try {
-    return await Contact.find();
+    if (favorite === "true" || favorite === "false") {
+      return await Contact.find({ owner: _id, favorite }, "", {
+        skip,
+        limit: Number(limit),
+      }).populate("owner", "_id email subscription");
+    }
+    return await Contact.find({ owner: _id }, "", {
+      skip,
+      limit: Number(limit),
+    }).populate("owner", "_id email subscription");
   } catch (error) {
     console.log(error);
   }
 };
 
-const getContactById = async (contactId) => {
+const getContactById = async (ownerId, contactId) => {
   try {
-    return await Contact.findById(contactId);
+    return await Contact.findOne({ _id: contactId, owner: ownerId });
   } catch (error) {
     console.log(error);
   }
 };
 
-const removeContact = async (contactId) => {
+const removeContact = async (ownerId, contactId) => {
   try {
-    return await Contact.findByIdAndRemove(contactId);
+    return await Contact.findOneAndRemove({ _id: contactId, owner: ownerId });
   } catch (error) {
     console.log(error);
   }
 };
 
-const addContact = async (body) => {
+const addContact = async (body, _id) => {
   try {
     const { name, email, phone, favorite } = body;
-    return await Contact.create({ name, email, phone, favorite });
+    return await Contact.create({ name, email, phone, favorite, owner: _id });
   } catch (error) {
     console.log(error);
   }
 };
 
-const updateContact = async (contactId, body) => {
+const updateContact = async (ownerId, contactId, body) => {
   try {
     const { name, email, phone, favorite } = body;
-    return await Contact.findByIdAndUpdate(contactId, {
-      $set: { name, email, phone, favorite },
-    });
+    return await Contact.findOneAndUpdate(
+      { _id: contactId, owner: ownerId },
+      {
+        $set: { name, email, phone, favorite },
+      },
+      { returnDocument: "after" }
+    );
   } catch (error) {
     console.log(error);
   }
 };
 
-const updateStatusContact = async (contactId, body) => {
+const updateStatusContact = async (ownerId, contactId, favorite) => {
   try {
-    const favorite = body.favorite;
-    return await Contact.findByIdAndUpdate(contactId, {
-      $set: { favorite },
-    });
-  } catch (error) {}
+    return await Contact.findOneAndUpdate(
+      { _id: contactId, owner: ownerId },
+      {
+        $set: { favorite },
+      },
+      { returnDocument: "after" }
+    );
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 module.exports = {

@@ -7,8 +7,12 @@ const {
   updateStatusContact,
 } = require("../services/contactServices");
 
-const getContacts = async (_, res) => {
-  const listOfContacts = await listContacts();
+const getContacts = async (req, res) => {
+  const { _id } = req.user;
+  const { page, limit, favorite } = req.query;
+  const skip = (page - 1) * limit;
+
+  const listOfContacts = await listContacts(_id, skip, limit, favorite);
   res.status(200).json({
     status: "200",
     listOfContacts,
@@ -16,7 +20,9 @@ const getContacts = async (_, res) => {
 };
 
 const getById = async (req, res) => {
-  const contactById = await getContactById(req.params.contactId);
+  const { _id } = req.user;
+  const contactId = req.params.contactId;
+  const contactById = await getContactById(_id, contactId);
   if (!contactById) {
     return res.status(404).json({
       status: "404",
@@ -30,6 +36,7 @@ const getById = async (req, res) => {
 };
 
 const addNewContact = async (req, res, next) => {
+  const { _id } = req.user;
   const { name, email, phone } = req.body;
   if (!name || !email || !phone)
     return res.status(400).json({
@@ -40,8 +47,7 @@ const addNewContact = async (req, res, next) => {
   if (!newContact.favorite) {
     newContact.favorite = false;
   }
-
-  await addContact(newContact);
+  await addContact(newContact, _id);
   res.status(201).json({
     status: "201",
     newContact,
@@ -49,40 +55,40 @@ const addNewContact = async (req, res, next) => {
 };
 
 const eraseContact = async (req, res, next) => {
-  const contactById = await getContactById(req.params.contactId);
-  if (!contactById) {
+  const { _id } = req.user;
+  const contactId = req.params.contactId;
+  const result = await removeContact(_id, contactId);
+  if (!result) {
     return res.status(404).json({
       status: "404",
       message: "Not found",
     });
   }
-  await removeContact(contactById.id);
-  res.status(200).json({
+  return res.status(200).json({
     status: "200",
     message: "contact deleted",
   });
 };
 
 const editContact = async (req, res, next) => {
-  if (!req.body.name && !req.body.email && !req.body.phone)
+  const { name, email, phone } = req.body;
+  if (!name && !email && !phone)
     return res.status(400).json({
       status: "400",
       message: "missing fields",
     });
-
-  const contactById = await getContactById(req.params.contactId);
-  if (!contactById) {
+  const { _id } = req.user;
+  const contactId = req.params.contactId;
+  const result = await updateContact(_id, contactId, req.body);
+  if (!result) {
     return res.status(404).json({
       status: "404",
       message: "Not found",
     });
   }
-
-  await updateContact(contactById.id, req.body);
-  const updatedContact = await getContactById(req.params.contactId);
-  res.status(200).json({
+  return res.status(200).json({
     status: "200",
-    updatedContact,
+    result,
   });
 };
 
@@ -92,20 +98,18 @@ const updateFavorite = async (req, res, next) => {
       status: "400",
       message: "missing field favorite",
     });
-
-  const contactById = await getContactById(req.params.contactId);
-  if (!contactById) {
+  const { _id } = req.user;
+  const contactId = req.params.contactId;
+  const result = await updateStatusContact(_id, contactId, req.body.favorite);
+  if (!result) {
     return res.status(404).json({
       status: "404",
       message: "Not found",
     });
   }
-
-  await updateStatusContact(contactById.id, req.body);
-  const updatedContact = await getContactById(req.params.contactId);
-  res.status(200).json({
+  return res.status(200).json({
     status: "200",
-    updatedContact,
+    result,
   });
 };
 
