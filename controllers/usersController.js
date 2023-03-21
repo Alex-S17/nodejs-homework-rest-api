@@ -1,6 +1,10 @@
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
 const bcrypt = require("bcryptjs");
 const { User } = require("../models/userModel");
+const path = require("path");
+// const fs = require("fs/promises");
+// const Jimp = require("jimp");
 require("dotenv").config();
 const SECRET_KEY = process.env.SECRET_KEY;
 const SUBSCRIPTION = process.env.SUBSCRIPTION;
@@ -10,6 +14,7 @@ const {
   loginUser,
   logoutUser,
   updateUserSubscription,
+  updateUserAvatar,
 } = require("../services/userServices");
 
 const register = async (req, res) => {
@@ -20,13 +25,15 @@ const register = async (req, res) => {
       message: "Email in use",
     });
   }
+  const avatarURL = gravatar.url(email);
   const salt = bcrypt.genSaltSync(10);
   const hashPassword = bcrypt.hashSync(password, salt);
-  await registerNewUser(email, hashPassword);
+  await registerNewUser(email, hashPassword, avatarURL);
   res.status(201).json({
     user: {
       email: email,
       subscription: "starter",
+      avatarURL: avatarURL,
     },
   });
 };
@@ -101,10 +108,36 @@ const updateSubscription = async (req, res) => {
   });
 };
 
+const updateAvatar = async (req, res) => {
+  const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+  const { _id } = req.user;
+  const { path: tempUpload, originalname } = req.file;
+  const newAvatarName = `${_id}${originalname}`;
+  const avatarURL = path.join("avatars", newAvatarName);
+  // const avatarURL = path.join("public", "avatars", newAvatarName);
+
+  const result = await updateUserAvatar(
+    avatarsDir,
+    newAvatarName,
+    avatarURL,
+    tempUpload,
+    _id
+  );
+  if (!result) {
+    return res.status(401).json({
+      message: "Not authorized",
+    });
+  }
+  return res.status(200).json({
+    avatarURL,
+  });
+};
+
 module.exports = {
   register,
   login,
   getCurrent,
   logout,
   updateSubscription,
+  updateAvatar,
 };

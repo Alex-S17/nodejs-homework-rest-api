@@ -1,8 +1,12 @@
 const { User } = require("../models/userModel");
 
-const registerNewUser = async (email, hashPassword) => {
+const path = require("path");
+const fs = require("fs/promises");
+const Jimp = require("jimp");
+
+const registerNewUser = async (email, hashPassword, avatarURL) => {
   try {
-    return await User.create({ email, password: hashPassword });
+    return await User.create({ email, password: hashPassword, avatarURL });
   } catch (error) {
     console.log(error);
   }
@@ -36,9 +40,33 @@ const updateUserSubscription = async (_id, subscription) => {
   }
 };
 
+const updateUserAvatar = async (
+  avatarsDir,
+  newAvatarName,
+  avatarURL,
+  tempUpload,
+  _id
+) => {
+  try {
+    const resultUpload = path.join(avatarsDir, newAvatarName);
+    await fs.rename(tempUpload, resultUpload);
+    Jimp.read(resultUpload)
+      .then((image) => {
+        return image.resize(250, 250).write(resultUpload);
+      })
+      .catch((err) => console.log(err));
+    await User.findByIdAndUpdate(_id, { avatarURL });
+    return 200;
+  } catch (error) {
+    await fs.unlink(tempUpload);
+    throw error;
+  }
+};
+
 module.exports = {
   registerNewUser,
   loginUser,
   logoutUser,
   updateUserSubscription,
+  updateUserAvatar,
 };
