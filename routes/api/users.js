@@ -15,7 +15,7 @@ const {
 
 const router = express.Router();
 
-router.post("/register", userValidation, register); // ПЕРЕИМЕНОВАТЬ
+router.post("/register", userValidation, register);
 router.post("/login", userValidation, login);
 router.post("/current", auth, getCurrent);
 router.post("/logout", auth, logout);
