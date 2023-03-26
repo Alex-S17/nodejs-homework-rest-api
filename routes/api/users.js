@@ -1,11 +1,17 @@
 const express = require("express");
 
-const { userValidation } = require("../../middlewares/validationUsers");
+const {
+  userValidation,
+  userMailValidation,
+} = require("../../middlewares/validationUsers");
+
 const { auth } = require("../../middlewares/auth");
 const { upload } = require("../../middlewares/upload");
 
 const {
   register,
+  verifyEmail,
+  repeatVerifyEmail,
   login,
   getCurrent,
   logout,
@@ -21,5 +27,7 @@ router.post("/current", auth, getCurrent);
 router.post("/logout", auth, logout);
 router.patch("/", auth, updateSubscription);
 router.patch("/avatars", auth, upload.single("avatar"), updateAvatar);
+router.get("/verify/:verificationToken", verifyEmail);
+router.post("/verify", userMailValidation, repeatVerifyEmail);
 
 module.exports = router;

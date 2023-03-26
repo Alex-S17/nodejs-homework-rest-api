@@ -4,9 +4,19 @@ const path = require("path");
 const fs = require("fs/promises");
 const Jimp = require("jimp");
 
-const registerNewUser = async (email, hashPassword, avatarURL) => {
+const registerNewUser = async (
+  email,
+  hashPassword,
+  avatarURL,
+  verificationToken
+) => {
   try {
-    return await User.create({ email, password: hashPassword, avatarURL });
+    return await User.create({
+      email,
+      password: hashPassword,
+      avatarURL,
+      verificationToken,
+    });
   } catch (error) {
     console.log(error);
   }

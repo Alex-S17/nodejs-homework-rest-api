@@ -3,9 +3,12 @@ const gravatar = require("gravatar");
 const bcrypt = require("bcryptjs");
 const { User } = require("../models/userModel");
 const path = require("path");
-// const fs = require("fs/promises");
-// const Jimp = require("jimp");
+
 require("dotenv").config();
+const { nanoid } = require("nanoid");
+const { sendEmail } = require("../helpers/sendEmail");
+const { createEmailBody } = require("../helpers/createEmailBody");
+
 const SECRET_KEY = process.env.SECRET_KEY;
 const SUBSCRIPTION = process.env.SUBSCRIPTION;
 
@@ -28,22 +31,65 @@ const register = async (req, res) => {
   const avatarURL = gravatar.url(email);
   const salt = bcrypt.genSaltSync(10);
   const hashPassword = bcrypt.hashSync(password, salt);
-  await registerNewUser(email, hashPassword, avatarURL);
+  const verificationToken = nanoid();
+  await registerNewUser(email, hashPassword, avatarURL, verificationToken);
+
+  const mail = createEmailBody(email, verificationToken);
+  await sendEmail(mail);
+
   res.status(201).json({
     user: {
       email: email,
       subscription: "starter",
       avatarURL: avatarURL,
+      verificationToken: verificationToken,
     },
+  });
+};
+
+const verifyEmail = async (req, res) => {
+  const { verificationToken } = req.params;
+  const user = await User.findOne({ verificationToken });
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+  await User.findByIdAndUpdate(user._id, {
+    verificationToken: null,
+    verify: true,
+  });
+  return res.status(200).json({
+    message: "Verification successful",
+  });
+};
+
+const repeatVerifyEmail = async (req, res) => {
+  if (!req.body.email) {
+    return res.status(400).json({
+      message: "Missing required field email",
+    });
+  }
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (user.verify) {
+    return res.status(400).json({
+      message: "Verification has already been passed",
+    });
+  }
+  const mail = createEmailBody(user.email, user.verificationToken);
+  await sendEmail(mail);
+  return res.status(200).json({
+    message: "Verification email sent",
   });
 };
 
 const login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
-  if (!user || !bcrypt.compareSync(password, user.password)) {
+  if (!user || !user.verify || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({
-      message: "Email or password is wrong",
+      message: "Email or password is wrong or email is not confirmed",
     });
   }
   const payload = { id: user._id };
@@ -135,6 +181,8 @@ const updateAvatar = async (req, res) => {
 
 module.exports = {
   register,
+  verifyEmail,
+  repeatVerifyEmail,
   login,
   getCurrent,
   logout,
